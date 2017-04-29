@@ -109,9 +109,9 @@ public class main {
                     doWork();
                     //workWait.release tells the scheduler that one time unit has executed in the thread
                     schedulerWait.release();
-                    System.out.println("Thread t0 has ended");
                     //threadWait.release indicates the conclusion of the thread
                     threadWait.release();
+                    System.out.println("Thread t0 has ended");
                 } catch (Exception e) {
                     System.out.println("Something went wrong");
                 }
