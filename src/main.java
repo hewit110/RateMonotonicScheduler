@@ -28,6 +28,10 @@ import java.util.concurrent.Semaphore;
  */
 public class main {
 
+    //TODO demonstrate test cases
+    //TODO provide average execution time
+    //TODO implement thread counters
+    //TODO identify missed deadlines
     //doWork function Will multiply the content of each cell of a 10x10 matrix
     // tarting with column 0 followed by 5, then 1 followed by 6, etc
     public static void doWork()
@@ -173,6 +177,8 @@ public class main {
         //workWait prevents the scheduler from executing a time unit until a thread has released workWait(), indicating
         //that it has finished one of its own time units
         for (int i = 0; i < 160; ++i) {
+            System.out.println("Scheduler has completed one time unit");
+
             try
             {
                 schedulerWait.acquire();
