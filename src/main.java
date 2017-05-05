@@ -34,6 +34,8 @@ public class main {
     //TODO identify missed deadlines
     //doWork function Will multiply the content of each cell of a 10x10 matrix
     // tarting with column 0 followed by 5, then 1 followed by 6, etc
+    public static int t0_counter;
+    public static boolean isFinished = true;
     public static void doWork()
     {
 
@@ -95,29 +97,27 @@ public class main {
         //queue will hold strings that are thread references.
         //Strings are called later on to fire off a corresponding thread.
         Queue q = new Queue();
-        //Semaphore for preventing a time unit from executing in the scheduler before the thread
         Semaphore schedulerWait = new Semaphore(1);
-        //Semaphore for preventing a time unit from executing in a thread before the scheduler
-        Semaphore workWait = new Semaphore(1);
-        //semaphore for preventing multiple threads from running at the same time
-        Semaphore threadWait = new Semaphore (1);
-
 
         Thread t0 = new Thread() {
             @Override
             public void run() {
                 try
                 {
-                    //schedulerWait is released at the end of one iteration of the scheduler (one for every time unit)
-                    workWait.acquire();
+                    schedulerWait.acquire();
+                    System.out.println("T0: schedulerWait: LOCKED");
+                    //Thread.sleep(400);
                     doWork();
-                    //workWait.release tells the scheduler that one time unit has executed in the thread
-                    schedulerWait.release();
-                    //threadWait.release indicates the conclusion of the thread
-                    threadWait.release();
-                    System.out.println("Thread t0 has ended");
+                    System.out.println("Thread t0 has finished an iteration of doWork");
+                    if (schedulerWait.availablePermits() < 1)
+                    {
+                        schedulerWait.release();
+                        System.out.println("T0: schedulerWait: RELEASED");
+                    }
+                    System.out.println("Thread t0 has finished");
+                    isFinished = true;
                 } catch (Exception e) {
-                    System.out.println("Something went wrong");
+                    System.out.println("Error: t0");
                 }
             }
         };
@@ -126,14 +126,21 @@ public class main {
             public void run() {
                 try {
                     for (int i=0;i<2;++i) {
-                        workWait.acquire();
+
+                        schedulerWait.acquire();
+                        //.sleep(400);
+                        System.out.println("T1: schedulerWait: LOCKED");
                         doWork();
-                        schedulerWait.release();
+                        System.out.println("Thread t1 has finished an iteration of doWork: i = " + i);
+                        if (schedulerWait.availablePermits() < 1) {
+                            schedulerWait.release();
+                            System.out.println("T1: schedulerWait: RELEASED");
+                        }
                     }
-                    threadWait.release();
-                    System.out.println("Thread t1 has ended");
+                    System.out.println("Thread t1 has finished");
+                    isFinished = true;
                 } catch (Exception e) {
-                    System.out.println("Something went wrong");
+                    System.out.println("Error: t1");
                 }
             }
         };
@@ -142,14 +149,21 @@ public class main {
             public void run() {
                 try {
                     for (int i=0;i<4;++i) {
-                        workWait.acquire();
+                        schedulerWait.acquire();
+                        //Thread.sleep(400);
+                        System.out.println("T2: WORKWAIT LOCKED");
                         doWork();
-                        schedulerWait.release();
+                        System.out.println("Thread t2 has finished an iteration of doWork: i = " + i);
+                        if (schedulerWait.availablePermits() < 1) {
+                            schedulerWait.release();
+                            System.out.println("T2: schedulerWait: RELEASED");
+                        }
+
                     }
-                    threadWait.release();
-                    System.out.println("Thread t2 has ended");
+                    System.out.println("Thread t2 has finished");
+                    isFinished = true;
                 } catch (Exception e) {
-                    System.out.println("Something went wrong");
+                    System.out.println("Error: t2");
                 }
             }
         };
@@ -158,39 +172,51 @@ public class main {
             public void run() {
                 try {
                     for (int i=0;i<16;++i) {
-                        workWait.acquire();
+                        schedulerWait.acquire();
+                        //Thread.sleep(400);
+                        System.out.println("T3: schedulerWait LOCKED");
                         doWork();
-                        schedulerWait.release();
+                        System.out.println("Thread t3 has finished an iteration of doWork: i = " + i);
+                        if (schedulerWait.availablePermits() < 1) {
+                            schedulerWait.release();
+                            System.out.println("T3: schedulerWait: RELEASED");
+                        }
                     }
-                    threadWait.release();
-                    System.out.println("Thread t3 has ended");
+                    System.out.println("Thread t3 has finished");
+                    isFinished = true;
                 } catch (Exception e) {
-                    System.out.println("Something went wrong");
+                    System.out.println("Error: t3");
                 }
             }
         };
 
 //----------------------------------------------scheduler section-----------------------------------------------------
 
-        //every iteration of i represents one generic time unit.
-        //10 periods of 16 time units = 160.
-        //workWait prevents the scheduler from executing a time unit until a thread has released workWait(), indicating
-        //that it has finished one of its own time units
         for (int i = 0; i < 160; ++i) {
-            System.out.println("Scheduler has completed one time unit");
 
+            System.out.println("---------------------i is " + i + "----------------------------");
             try
             {
-                schedulerWait.acquire();
+                if (schedulerWait.availablePermits() < 1)
+                {
+                    schedulerWait.release();
+                }
             } catch (Exception e)
             {
-                System.out.println("Error in attempting to acquire workWait permit");
+                System.out.println("ERROR: schedulerWait.release(); from SCHEDULER");
             }
-
             //Every 16'th iteration marks the end of a period and the start of a new one: trigger 4 new threads
             //Threads are added to a queue and ordered according to time period manually.
+
+
             if (i%16 == 0)
             {
+                if (!isFinished)
+                {
+                    Object thread = q.peek();
+                    System.out.println(thread.toString() + " has overrun!");
+                }
+                System.out.println("Inserting new threads to queue...");
                 q.enqueue("t0");
                 q.enqueue("t1");
                 q.enqueue("t2");
@@ -199,7 +225,7 @@ public class main {
 
             //If a thread has finished during this period:
             //System.out.println("Available permits are " + schedulerWait.availablePermits());
-            if (threadWait.availablePermits() > 0)
+            if (isFinished)
             {
                 //If a thread has completed all of its time units and released threadWait, remove it from the queue. The thread has concluded.
                 //unless it is the first iteration, since no threads have been started yet.
@@ -209,47 +235,43 @@ public class main {
                     {
                         q.dequeue();
                     }
-                    //Take a look at the next thread in line and kick it off.
                     Object thread = q.peek();
-                    //System.out.println("Object in the queue is " + thread.toString());
+                    isFinished = false;
                     switch (thread.toString()) {
                         case "t0":
-                            threadWait.acquire();
-                            //System.out.println("t0 just took a permit,  " + schedulerWait.availablePermits() + "permits remaining");
                             System.out.println("Thread t0 has begun");
                             t0.start();
                             break;
                         case "t1":
-                            threadWait.acquire();
                             System.out.println("Thread t1 has begun");
                             t1.start();
                             break;
                         case "t2":
-                            threadWait.acquire();
                             System.out.println("Thread t2 has begun");
                             t2.start();
                             break;
                         case "t3":
-                            threadWait.acquire();
                             System.out.println("Thread t3 has begun");
                             t3.start();
                             break;
+                        default:
+                            System.out.println("ERROR: All case statements failed");
                     }
                 } catch (Exception e) {
                     System.out.println("Something went wrong while modifying the queue or starting a thread!");
                     e.printStackTrace();
                 }
-            }//close availablePermits() > 0
-            //Now that the scheduler has completed a time unit, signal a thread to execute on of its time units
+            }
             try
             {
-                if (workWait.availablePermits() < 1) {
-                    workWait.release();
-                }
-            }
-            catch (Exception e)
+                Thread.sleep(200);
+                schedulerWait.acquire();
+                System.out.println("T: schedulerWait: LOCKED");
+
+            }catch(InterruptedException ie)
             {
-                System.out.println("Somethign happened while attempting to release workWait permit");
+                ie.printStackTrace();
+                System.out.println("Something happened while attempting to acquire SchedulerWait permit");
             }//close catch
         }//close for
     }//close main method
