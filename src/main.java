@@ -23,19 +23,21 @@ import java.util.concurrent.Semaphore;
  happens
  *
  * @author: Kevin Hewitt
- * @date: 4/24/2017
- * @version: 1.0
+ * @date: 4/24/2017 - 5/7/2017
+ * @version: 1.7.3
  */
 public class main {
-
-    //TODO demonstrate test cases
-    //TODO provide average execution time
-    //TODO implement thread counters
-    //TODO identify missed deadlines
-    //doWork function Will multiply the content of each cell of a 10x10 matrix
-    // tarting with column 0 followed by 5, then 1 followed by 6, etc
     public static int t0_counter;
+    public static int t1_counter;
+    public static int t2_counter;
+    public static int t3_counter;
+    public static int overrun_counter;
     public static boolean isFinished = true;
+
+    /*
+    * doWork function Will multiply the content of each cell of a 10x10 matrix
+    * tarting with column 0 followed by 5, then 1 followed by 6, etc
+    */
     public static void doWork()
     {
 
@@ -95,10 +97,22 @@ public class main {
 
     public static void main(String[] argvs) {
         //queue will hold strings that are thread references.
-        //Strings are called later on to fire off a corresponding thread.
+        //Strings are called later on to execute a corresponding thread.
         Queue q = new Queue();
+
+        //Semaphore used to synchronize the time units of the scheduler and the threads
         Semaphore schedulerWait = new Semaphore(1);
 
+        /*
+        Threads will attempt to acquire a semaphore permit.
+        Permits are held by the scheduler until the scheduler has indicated that it is ready to begin one time unit.
+        Threads will then call doWork() for the specified number of times.
+        Each iteration of doWork() represents one single time period.
+        When a thread has completed an iteration of work, it will release a semaphore, allowing the Scheduler to complete its time unit.
+        Upon completion threads set a boolean iSFinished value to true, which informs the scheduler that it should look for and
+        run the next thread in the queue.
+        Lastly, a called thread will increment its respective counter by 1.
+         */
         Thread t0 = new Thread() {
             @Override
             public void run() {
@@ -106,16 +120,22 @@ public class main {
                 {
                     schedulerWait.acquire();
                     System.out.println("T0: schedulerWait: LOCKED");
-                    //Thread.sleep(400);
+
                     doWork();
                     System.out.println("Thread t0 has finished an iteration of doWork");
+
                     if (schedulerWait.availablePermits() < 1)
                     {
                         schedulerWait.release();
                         System.out.println("T0: schedulerWait: RELEASED");
                     }
+
                     System.out.println("Thread t0 has finished");
+
                     isFinished = true;
+
+                    ++t0_counter;
+
                 } catch (Exception e) {
                     System.out.println("Error: t0");
                 }
@@ -126,19 +146,24 @@ public class main {
             public void run() {
                 try {
                     for (int i=0;i<2;++i) {
-
                         schedulerWait.acquire();
-                        //.sleep(400);
                         System.out.println("T1: schedulerWait: LOCKED");
+
                         doWork();
                         System.out.println("Thread t1 has finished an iteration of doWork: i = " + i);
+
                         if (schedulerWait.availablePermits() < 1) {
                             schedulerWait.release();
                             System.out.println("T1: schedulerWait: RELEASED");
                         }
                     }
+
                     System.out.println("Thread t1 has finished");
+
                     isFinished = true;
+
+                    ++t1_counter;
+
                 } catch (Exception e) {
                     System.out.println("Error: t1");
                 }
@@ -150,18 +175,23 @@ public class main {
                 try {
                     for (int i=0;i<4;++i) {
                         schedulerWait.acquire();
-                        //Thread.sleep(400);
                         System.out.println("T2: WORKWAIT LOCKED");
+
                         doWork();
                         System.out.println("Thread t2 has finished an iteration of doWork: i = " + i);
+
                         if (schedulerWait.availablePermits() < 1) {
                             schedulerWait.release();
                             System.out.println("T2: schedulerWait: RELEASED");
                         }
-
                     }
+
                     System.out.println("Thread t2 has finished");
+
                     isFinished = true;
+
+                    ++t2_counter;
+
                 } catch (Exception e) {
                     System.out.println("Error: t2");
                 }
@@ -173,17 +203,23 @@ public class main {
                 try {
                     for (int i=0;i<16;++i) {
                         schedulerWait.acquire();
-                        //Thread.sleep(400);
                         System.out.println("T3: schedulerWait LOCKED");
+
                         doWork();
                         System.out.println("Thread t3 has finished an iteration of doWork: i = " + i);
+
                         if (schedulerWait.availablePermits() < 1) {
                             schedulerWait.release();
                             System.out.println("T3: schedulerWait: RELEASED");
                         }
                     }
+
                     System.out.println("Thread t3 has finished");
+
                     isFinished = true;
+
+                    ++t3_counter;
+
                 } catch (Exception e) {
                     System.out.println("Error: t3");
                 }
@@ -192,11 +228,16 @@ public class main {
 
 //----------------------------------------------scheduler section-----------------------------------------------------
 
+        /*
+        i = one time unit.
+        16 time units = 1 period
+        10 periods of 16 time units = ( int i = 160...)
+         */
         for (int i = 0; i < 160; ++i) {
-
             System.out.println("---------------------i is " + i + "----------------------------");
             try
             {
+                //only award permits if one is taken: prevents extra permits
                 if (schedulerWait.availablePermits() < 1)
                 {
                     schedulerWait.release();
@@ -204,18 +245,21 @@ public class main {
             } catch (Exception e)
             {
                 System.out.println("ERROR: schedulerWait.release(); from SCHEDULER");
+                e.printStackTrace();
             }
+
             //Every 16'th iteration marks the end of a period and the start of a new one: trigger 4 new threads
             //Threads are added to a queue and ordered according to time period manually.
-
-
             if (i%16 == 0)
             {
+                //if a time period is complete but a thread is not yet finished...
                 if (!isFinished)
                 {
                     Object thread = q.peek();
                     System.out.println(thread.toString() + " has overrun!");
+                    ++overrun_counter;
                 }
+
                 System.out.println("Inserting new threads to queue...");
                 q.enqueue("t0");
                 q.enqueue("t1");
@@ -224,18 +268,20 @@ public class main {
             }
 
             //If a thread has finished during this period:
-            //System.out.println("Available permits are " + schedulerWait.availablePermits());
             if (isFinished)
             {
-                //If a thread has completed all of its time units and released threadWait, remove it from the queue. The thread has concluded.
-                //unless it is the first iteration, since no threads have been started yet.
-                //availablePermits() > 0 marks the lacking of a running thread.
+                /*
+                Remove it from the queue. The thread has concluded.
+                Unless it is the first iteration, since no threads have been started yet.
+                isFinished marks the lacking of a running thread.
+                */
                 try {
                     if (i != 0)
                     {
                         q.dequeue();
                     }
                     Object thread = q.peek();
+                    //A thread is about to begin, so set isFinished to false.
                     isFinished = false;
                     switch (thread.toString()) {
                         case "t0":
@@ -264,6 +310,7 @@ public class main {
             }
             try
             {
+                //attempt to allow the thread some time to collect permit so it can compensate for overhead
                 Thread.sleep(200);
                 schedulerWait.acquire();
                 System.out.println("T: schedulerWait: LOCKED");
@@ -274,5 +321,9 @@ public class main {
                 System.out.println("Something happened while attempting to acquire SchedulerWait permit");
             }//close catch
         }//close for
+
+        System.out.println("Final tally: /n t0: " + t0_counter + " /n t1: " + t1_counter + " /n t2: " + t2_counter +
+                            " /n t3: " + t3_counter + " /n Overrun: " + overrun_counter + " /n ");
+
     }//close main method
 }//close class

@@ -1,0 +1,115 @@
+My core idea for this project was to use a priority queue. It would be simple
+because I could manually input the threads in the correct order without having
+to worry about preemption in my program. As it turns out, this would lead to
+my downfall: no matter what I couldn't control the extremely varying cases
+of overhead, and if I had the chance to restart with enough time I would've
+had my threads running indefinetely, but performing their operations via a
+scheduler. Anyways, I tried to synchronize my threads to the scheduler with a
+single semaphore. The idea was since the threads ran slower than the scheduler,
+the scheduler and threads would both compete for the same semaphore. The thread
+would lock it down during its iteration of a time unit, and on its completion
+it would release it. At this point the thread would take it over, and since the
+scheduler ran faster, it would have to wait for the thread to complete ITS time
+unit before the scheduler could execute another one of its own. This didn't
+account for the thread.start overhead.
+
+A boolean is tripped when a thread finishes, signaling to the scheduler that
+another thread is safe to begin. I did this because a bool could be monitored
+at different angles, which would make it easy to check for overruns.
+
+-----------------------------OUTPUT: V 1.7.3------------------------------------
+---------------------i is 0----------------------------
+Inserting new threads to queue...
+Thread t0 has begun
+T0: schedulerWait: LOCKED
+Thread t0 has finished an iteration of doWork
+T0: schedulerWait: RELEASED
+Thread t0 has finished
+T: schedulerWait: LOCKED
+---------------------i is 1----------------------------
+Thread t1 has begun
+T1: schedulerWait: LOCKED
+Thread t1 has finished an iteration of doWork: i = 0
+T1: schedulerWait: RELEASED
+T1: schedulerWait: LOCKED
+Thread t1 has finished an iteration of doWork: i = 1
+T1: schedulerWait: RELEASED
+Thread t1 has finished
+T: schedulerWait: LOCKED
+---------------------i is 2----------------------------
+Thread t2 has begun
+T2: WORKWAIT LOCKED
+Thread t2 has finished an iteration of doWork: i = 0
+T2: schedulerWait: RELEASED
+T2: WORKWAIT LOCKED
+Thread t2 has finished an iteration of doWork: i = 1
+T2: schedulerWait: RELEASED
+T2: WORKWAIT LOCKED
+Thread t2 has finished an iteration of doWork: i = 2
+T2: schedulerWait: RELEASED
+T2: WORKWAIT LOCKED
+Thread t2 has finished an iteration of doWork: i = 3
+T2: schedulerWait: RELEASED
+Thread t2 has finished
+T: schedulerWait: LOCKED
+---------------------i is 3----------------------------
+Thread t3 has begun
+T3: schedulerWait LOCKED
+Thread t3 has finished an iteration of doWork: i = 0
+T3: schedulerWait: RELEASED
+T3: schedulerWait LOCKED
+Thread t3 has finished an iteration of doWork: i = 1
+T3: schedulerWait: RELEASED
+T3: schedulerWait LOCKED
+Thread t3 has finished an iteration of doWork: i = 2
+T3: schedulerWait: RELEASED
+T3: schedulerWait LOCKED
+Thread t3 has finished an iteration of doWork: i = 3
+T3: schedulerWait: RELEASED
+T3: schedulerWait LOCKED
+Thread t3 has finished an iteration of doWork: i = 4
+T3: schedulerWait: RELEASED
+T3: schedulerWait LOCKED
+Thread t3 has finished an iteration of doWork: i = 5
+T3: schedulerWait: RELEASED
+T3: schedulerWait LOCKED
+Thread t3 has finished an iteration of doWork: i = 6
+T3: schedulerWait: RELEASED
+T3: schedulerWait LOCKED
+Thread t3 has finished an iteration of doWork: i = 7
+T3: schedulerWait: RELEASED
+T3: schedulerWait LOCKED
+Thread t3 has finished an iteration of doWork: i = 8
+T3: schedulerWait: RELEASED
+T3: schedulerWait LOCKED
+Thread t3 has finished an iteration of doWork: i = 9
+T3: schedulerWait: RELEASED
+T3: schedulerWait LOCKED
+Thread t3 has finished an iteration of doWork: i = 10
+T3: schedulerWait: RELEASED
+T3: schedulerWait LOCKED
+Thread t3 has finished an iteration of doWork: i = 11
+T3: schedulerWait: RELEASED
+T3: schedulerWait LOCKED
+Thread t3 has finished an iteration of doWork: i = 12
+T3: schedulerWait: RELEASED
+T3: schedulerWait LOCKED
+Thread t3 has finished an iteration of doWork: i = 13
+T3: schedulerWait: RELEASED
+T3: schedulerWait LOCKED
+Thread t3 has finished an iteration of doWork: i = 14
+T3: schedulerWait: RELEASED
+T3: schedulerWait LOCKED
+Thread t3 has finished an iteration of doWork: i = 15
+T3: schedulerWait: RELEASED
+Thread t3 has finished
+T: schedulerWait: LOCKED
+---------------------i is 4----------------------------
+Something went wrong while modifying the queue or starting a thread!
+java.lang.IndexOutOfBoundsException: Index: 0, Size: 0
+	at java.util.LinkedList.checkElementIndex(LinkedList.java:555)
+	at java.util.LinkedList.get(LinkedList.java:476)
+	at Queue.peek(Queue.java:55)
+	at main.main(main.java:283)
+T: schedulerWait: LOCKED
+java.lang.IndexOutOfBoundsException: Index: 0, Size: 0
